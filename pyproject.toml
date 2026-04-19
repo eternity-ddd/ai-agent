@@ -1,0 +1,29 @@
+[project]
+name = "ai-agent"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.14"
+dependencies = [
+    "asyncio>=4.0.0",
+    "bs4>=0.0.2",
+    "dotenv>=0.9.9",
+    "logfire>=4.32.1",
+    "pydantic-ai>=1.84.0",
+    "pydantic-ai-slim[duckduckgo]>=1.84.0",
+    "selenium>=4.43.0",
+    "websearch>=0.0.0",
+    "langchain>=0.3.0",
+    "langchain-openai>=0.3.0",
+    "langchain-anthropic>=0.3.0",
+    "langchain-community>=0.3.0",
+    "langgraph>=0.4.0",
+    "chromadb>=1.0.0",
+    "langchain-chroma>=0.2.0",
+    "numpy>=2.0.0",
+    "openai>=1.0.0",
+    "fpdf2>=2.8.7",
+    "pymupdf>=1.27.2.2",
+    "langchain-text-splitters>=1.1.2",
+    "playwright>=1.58.0",
+    "html2text>=2025.4.15",
+]
