@@ -1328,26 +1328,7 @@ chain = (
 | 임베딩 | `openai_client.embeddings.create()` 직접 호출 | `OpenAIEmbeddings()` |
 | 벡터 DB | `chromadb.PersistentClient()` 직접 관리 | `Chroma.from_documents()` |
 | 검색 | `collection.query()` + `@agent.tool` 등록 | `retriever` 파이프 연결 |
-| **총 라인 수** | **~90줄** | **~50줄** |
+| **총 라인 수** | **~128줄** | **~63줄** |
 | **DB 교체** | 전부 다시 구현 | `Chroma` → `FAISS` 한 줄 교체 |
 
 RAG처럼 표준화된 파이프라인에서는 **LangChain의 풍부한 내장 컴포넌트가 명확한 장점**이다. PydanticAI는 에이전트 코어에 집중하는 대신 이런 인프라성 기능은 직접 구현하거나 외부 라이브러리에 의존해야 한다.
-
----
-
-## 7. 관측가능성 - Logfire
-
-PydanticAI는 Logfire를 통해 에이전트 실행 과정을 추적할 수 있다.
-
-```python
-logfire.configure()
-logfire.instrument_pydantic_ai()
-...
-logfire.force_flush()
-```
-
-대시보드: [https://logfire-eu.pydantic.dev](https://logfire-eu.pydantic.dev/)
-
-![image.png](images/image.png)
-
-![image.png](images/image2.png)

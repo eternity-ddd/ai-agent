@@ -7,7 +7,6 @@ dependencies = [
     "asyncio>=4.0.0",
     "bs4>=0.0.2",
     "dotenv>=0.9.9",
-    "logfire>=4.32.1",
     "pydantic-ai>=1.84.0",
     "pydantic-ai-slim[duckduckgo]>=1.84.0",
     "selenium>=4.43.0",

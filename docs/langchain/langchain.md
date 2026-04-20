@@ -1123,7 +1123,7 @@ response = chain.invoke("제주도의 해녀 문화에 대해 알려줘")
 | 임베딩 | `openai_client.embeddings.create()` 직접 호출 | `OpenAIEmbeddings()` (1줄) |
 | 벡터 DB | `chromadb.PersistentClient()` 직접 관리 | `Chroma.from_documents()` (1줄) |
 | 검색 | `collection.query()` 직접 구현 + `@agent.tool` 등록 | `retriever` 파이프 연결 |
-| **전체 코드량** | **~90줄** | **~50줄** |
+| **전체 코드량** | **~128줄** | **~63줄** |
 | **DB 교체** | 전부 다시 구현 | `Chroma` → `FAISS` 한 줄 교체 |
 
 **전체 코드**
