@@ -38,7 +38,7 @@ def format_result(result: str) -> str:
 # --- Agent 정의 (도구 실행 루프를 자동 처리) ---
 
 agent = create_agent(
-    "gpt-5.2",
+    "gpt-4o",
     tools=[web_search, format_result],
     system_prompt="도시 정보를 정확히 알려줘. 결과는 100글자 이내로 작성해줘.",
 )

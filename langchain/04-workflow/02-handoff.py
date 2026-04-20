@@ -23,13 +23,13 @@ class MovieOutput(BaseModel):
 # --- Agent 정의 ---
 
 movie_agent = create_agent(
-    "openai:gpt-5.2",
+    "openai:gpt-4o",
     system_prompt="영화 전문가들을 위한 영화를 선택해줘. 적절한 영화가 없으면 title을 null로 반환해줘",
     response_format=MovieOutput,
 )
 
 review_agent = create_agent(
-    "openai:gpt-5.2",
+    "openai:gpt-4o",
     system_prompt="영화 리뷰 전문가야. 가장 최신에 작성된 리뷰를 선택해줘.",
 )
 

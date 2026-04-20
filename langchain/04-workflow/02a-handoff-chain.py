@@ -29,7 +29,7 @@ movie_chain = (
         ("system", "영화 전문가들을 위한 영화를 선택해줘. 적절한 영화가 없으면 title을 null로 반환해줘"),
         ("human", "{question}"),
     ])
-    | init_chat_model("gpt-5.2", model_provider="openai").with_structured_output(MovieOutput)
+    | init_chat_model("gpt-4o", model_provider="openai").with_structured_output(MovieOutput)
 )
 
 review_chain = (
@@ -37,7 +37,7 @@ review_chain = (
         ("system", "영화 리뷰 전문가야. 가장 최신에 작성된 리뷰를 선택해줘."),
         ("human", "{question}"),
     ])
-    | init_chat_model("gpt-5.2", model_provider="openai")
+    | init_chat_model("gpt-4o", model_provider="openai")
     | StrOutputParser()
 )
 

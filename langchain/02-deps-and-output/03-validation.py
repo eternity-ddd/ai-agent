@@ -47,7 +47,7 @@ prompt = ChatPromptTemplate.from_messages([
 ])
 
 # 출력 형식은 CityInfo로 지정
-llm = init_chat_model("gpt-5.2", model_provider="openai").with_structured_output(CityInfo)
+llm = init_chat_model("gpt-4o", model_provider="openai").with_structured_output(CityInfo)
 
 chain = prompt | llm
 

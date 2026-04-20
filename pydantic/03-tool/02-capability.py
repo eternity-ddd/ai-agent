@@ -17,7 +17,7 @@ load_dotenv()
 # --- Agent 정의 ---
 
 agent = Agent(
-    "anthropic:claude-opus-4-6",
+    "anthropic:claude-opus-4-7",
     instructions="도시 정보를 정확히 알려줘",
     capabilities=[
         Thinking(),

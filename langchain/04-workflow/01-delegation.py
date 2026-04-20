@@ -16,7 +16,7 @@ load_dotenv()
 # --- 하위 에이전트 (리뷰 검색) ---
 
 review_agent = create_agent(
-    "openai:gpt-5.2",
+    "openai:gpt-4o",
     system_prompt="영화 리뷰 전문가야. 가장 최신에 작성된 조건에 해당하는 리뷰를 선택해줘.",
 )
 
@@ -33,7 +33,7 @@ def review_movie(movie_title: str) -> str:
 # --- 상위 에이전트 (영화 선택 + 리뷰 위임) ---
 
 movie_agent = create_agent(
-    "openai:gpt-5.2",
+    "openai:gpt-4o",
     tools=[review_movie],
     system_prompt="영화 전문가들을 위한 영화를 선택해줘",
 )

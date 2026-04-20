@@ -28,13 +28,13 @@ class MovieOutput(BaseModel):
 # --- Agent 정의 ---
 
 movie_agent = Agent[None, MovieOutput](
-    'openai:gpt-5.2',
+    'openai:gpt-4o',
     output_type=MovieOutput,    # type: ignore
     instructions="영화 전문가들을 위한 영화를 선택해줘. 적절한 영화가 없으면 title을 null로 반환해줘",
 )
 
 review_agent = Agent[ReviewCriteria](
-    "openai-responses:gpt-5.2",
+    "openai-responses:gpt-4o",
     deps_type=ReviewCriteria,   # type: ignore
     capabilities=[WebSearch()],
 )

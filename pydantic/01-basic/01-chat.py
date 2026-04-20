@@ -14,7 +14,7 @@ load_dotenv()
 # --- Agent 정의 ---
 
 agent = Agent(
-    "openai:gpt-5.2",
+    "openai:gpt-4o",
     instructions="도시 정보를 정확하게 알려줘.",
     model_settings={
         'temperature': 0.3,

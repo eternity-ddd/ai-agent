@@ -22,7 +22,7 @@ Agent 생성 시 사용할 모델, 시스템 지시(instructions), 모델 설정
 
 ```python
 agent = Agent(
-    "openai:gpt-5.2",
+    "openai:gpt-4o",
     instructions="도시 정보를 정확하게 알려줘.",
     model_settings={
         'temperature': 0.3,
@@ -64,7 +64,7 @@ from pydantic_ai import Agent
 load_dotenv()
 
 agent = Agent(
-    "openai:gpt-5.2",
+    "openai:gpt-4o",
     instructions="도시 정보를 정확하게 알려줘.",
     model_settings={
         'temperature': 0.3,
@@ -116,7 +116,7 @@ from pydantic_ai import Agent
 load_dotenv()
 
 agent = Agent(
-    "openai:gpt-5.2",
+    "openai:gpt-4o",
     instructions="도시 정보를 정확하게 알려줘. 결과는 500글자 이내로 작성해줘.",
     model_settings={
         'temperature': 0.3,
@@ -167,7 +167,7 @@ from pydantic_ai import Agent
 load_dotenv()
 
 agent = Agent(
-    "openai:gpt-5.2",
+    "openai:gpt-4o",
     instructions="도시 정보를 정확하게 알려줘. 결과는 500글자 이내로 작성해줘.",
     model_settings={
         'temperature': 0.3,
@@ -214,7 +214,7 @@ class CityInfo(BaseModel):
     population: int
 
 agent = Agent[MyState, CityInfo](   # [의존성타입, 출력타입]
-    "openai:gpt-5.2",
+    "openai:gpt-4o",
     instructions="도시 정보를 정확히 알려줘",
     deps_type=MyState,      # type: ignore
     output_type=CityInfo,   # type: ignore
@@ -263,7 +263,7 @@ class CityInfo(BaseModel):
     population: int
 
 agent = Agent[MyState, CityInfo](
-    "openai:gpt-5.2",
+    "openai:gpt-4o",
     instructions="도시 정보를 정확히 알려줘",
     deps_type=MyState,      # type: ignore
     output_type=CityInfo,   # type: ignore
@@ -327,7 +327,7 @@ class CityInfo(BaseModel):
     population: int
 
 agent = Agent[MyState, CityInfo](
-    "openai:gpt-5.2",
+    "openai:gpt-4o",
     instructions="도시 정보를 정확히 알려줘",
     deps_type=MyState,      # type: ignore
     output_type=CityInfo,   # type: ignore
@@ -435,7 +435,7 @@ class CityInfo(BaseModel):
         return v
 
 agent = Agent[MyState, CityInfo](
-    "openai:gpt-5.2",
+    "openai:gpt-4o",
     instructions="도시 정보를 정확히 알려줘",
     deps_type=MyState,      # type: ignore
     output_type=CityInfo,   # type: ignore
@@ -540,7 +540,7 @@ class Search(BaseModel):
     location: str = Field(description="위치", min_length=1)
 
 agent = Agent[MyState](
-    "openai:gpt-5.2",
+    "openai:gpt-4o",
     instructions="도시 정보를 정확히 알려줘",
     deps_type=MyState,  # type: ignore
 )
@@ -579,7 +579,7 @@ Capability는 Tool, Hook, Instructions, Settings를 하나로 묶은 **재사용
 
 ```python
 agent = Agent(
-    "anthropic:claude-opus-4-6",
+    "anthropic:claude-opus-4-7",
     capabilities=[
         Thinking(),     # 사고 과정(chain-of-thought) 활성화
         WebSearch(),    # 웹 검색
@@ -623,7 +623,7 @@ from pydantic_ai.capabilities import Thinking, WebSearch, WebFetch
 load_dotenv()
 
 agent = Agent(
-    "anthropic:claude-opus-4-6",
+    "anthropic:claude-opus-4-7",
     instructions="도시 정보를 정확히 알려줘",
     capabilities=[
         Thinking(),
@@ -685,13 +685,13 @@ class ReviewCriteria:
     criteria: str
 
 movie_agent = Agent[ReviewCriteria](
-    'openai:gpt-5.2',
+    'openai:gpt-4o',
     deps_type=ReviewCriteria,   # type: ignore
     instructions="영화 전문가들을 위한 영화를 선택해줘",
 )
 
 review_agent = Agent[ReviewCriteria](
-    "openai-responses:gpt-5.2",
+    "openai-responses:gpt-4o",
     deps_type=ReviewCriteria,   # type: ignore
     capabilities=[WebSearch()],
 )
@@ -754,13 +754,13 @@ class MovieOutput(BaseModel):
     title: str | None = Field(description="영화 제목", default=None, max_length=100)
 
 movie_agent = Agent[None, MovieOutput](
-    'openai:gpt-5.2',
+    'openai:gpt-4o',
     output_type=MovieOutput,    # type: ignore
     instructions="영화 전문가들을 위한 영화를 선택해줘. 적절한 영화가 없으면 title을 null로 반환해줘",
 )
 
 review_agent = Agent[ReviewCriteria](
-    "openai-responses:gpt-5.2",
+    "openai-responses:gpt-4o",
     deps_type=ReviewCriteria,   # type: ignore
     capabilities=[WebSearch()],
 )
@@ -831,18 +831,18 @@ class ReviewScore(BaseModel):
     value: int = Field(description="리뷰 점수", ge=1, le=10)
 
 movie_agent = Agent[None, MovieOutput](
-    'openai:gpt-5.2',
+    'openai:gpt-4o',
     output_type=MovieOutput,  # type: ignore
     instructions="영화 전문가들을 위한 영화를 선택해줘. 적절한 영화가 없으면 title을 null로 반환해줘",
 )
 
 review_agent = Agent(
-    "openai-responses:gpt-5.2",
+    "openai-responses:gpt-4o",
     capabilities=[WebSearch()],
 )
 
 score_agent = Agent[None, ReviewScore](
-    'openai:gpt-5.2',
+    'openai:gpt-4o',
     output_type=ReviewScore,
     instructions="리뷰 점수는 1점에서 10점 사이 정수값으로 변환해서 줘",
 )
@@ -1026,18 +1026,18 @@ class ReviewScore(BaseModel):
     value: int = Field(description="리뷰 점수", ge=1, le=10)
 
 movie_agent = Agent[None, MovieOutput](
-    'openai:gpt-5.2',
+    'openai:gpt-4o',
     output_type=MovieOutput,    # type: ignore
     instructions="영화 전문가들을 위한 영화를 선택해줘. 적절한 영화가 없으면 title을 null로 반환해줘",
 )
 
 review_agent = Agent(
-    "openai-responses:gpt-5.2",
+    "openai-responses:gpt-4o",
     capabilities=[WebSearch()],
 )
 
 score_agent = Agent[None, ReviewScore](
-    'openai:gpt-5.2',
+    'openai:gpt-4o',
     output_type=ReviewScore,
     instructions="리뷰 점수는 1점에서 10점 사이 정수값으로 변환해서 줘",
 )
@@ -1222,7 +1222,7 @@ class RagDeps:
     collection: chromadb.Collection
 
 agent = Agent[RagDeps](
-    "openai:gpt-5.2",
+    "openai:gpt-4o",
     instructions="검색된 문서를 기반으로 정확하게 답변해줘. 문서에 없는 내용은 추측하지 마.",
     deps_type=RagDeps,  # type: ignore
 )

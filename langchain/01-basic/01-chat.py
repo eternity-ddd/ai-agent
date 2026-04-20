@@ -22,7 +22,7 @@ prompt = ChatPromptTemplate.from_messages([
 ])
 
 llm = init_chat_model(
-    "gpt-5.2",
+    "gpt-4o",
     model_provider="openai",
     temperature=0.3,
     max_tokens=500,

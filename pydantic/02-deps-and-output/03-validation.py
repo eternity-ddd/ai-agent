@@ -41,7 +41,7 @@ class CityInfo(BaseModel):
 # --- Agent 정의 ---
 
 agent = Agent[MyState, CityInfo](
-    "openai:gpt-5.2",
+    "openai:gpt-4o",
     instructions="도시 정보를 정확히 알려줘",
     deps_type=MyState,      # type: ignore
     output_type=CityInfo,   # type: ignore

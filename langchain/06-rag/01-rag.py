@@ -49,7 +49,7 @@ chain = (
     {"context": retriever | (lambda docs: "\n\n".join(d.page_content for d in docs)),
      "question": RunnablePassthrough()}
     | prompt
-    | init_chat_model("gpt-5.2", model_provider="openai")
+    | init_chat_model("gpt-4o", model_provider="openai")
     | StrOutputParser()
 )
 

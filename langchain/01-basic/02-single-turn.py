@@ -21,7 +21,7 @@ prompt = ChatPromptTemplate.from_messages([
     ("human", "{question}"),
 ])
 
-llm = init_chat_model("gpt-5.2", model_provider="openai", temperature=0.3, max_tokens=500)
+llm = init_chat_model("gpt-4o", model_provider="openai", temperature=0.3, max_tokens=500)
 
 chain = prompt | llm | StrOutputParser()
 

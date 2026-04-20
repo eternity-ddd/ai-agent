@@ -46,7 +46,7 @@ prompt = ChatPromptTemplate.from_messages([
     ("human", "{question}"),
 ])
 
-llm_with_tools = init_chat_model("gpt-5.2", model_provider="openai").bind_tools(tools)
+llm_with_tools = init_chat_model("gpt-4o", model_provider="openai").bind_tools(tools)
 chain = prompt | llm_with_tools
 
 # --- 실행 ---

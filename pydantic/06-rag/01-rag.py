@@ -94,7 +94,7 @@ class RagDeps:
 # --- Agent 정의 ---
 
 agent = Agent[RagDeps](
-    "openai:gpt-5.2",
+    "openai:gpt-4o",
     instructions="검색된 문서를 기반으로 정확하게 답변해줘. 문서에 없는 내용은 추측하지 마.",
     deps_type=RagDeps,  # type: ignore
 )

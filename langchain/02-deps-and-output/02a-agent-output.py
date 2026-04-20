@@ -34,7 +34,7 @@ class CityInfo(BaseModel):
 # --- Agent 정의 (구조화된 출력) ---
 
 agent = create_agent(
-    model="gpt-5.2",
+    model="gpt-4o",
     system_prompt=f"도시 정보를 정확히 알려줘. 결과는 {state.length} 글자 이내로 작성해줘.",
     response_format=CityInfo,
 )
