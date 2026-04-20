@@ -83,8 +83,6 @@ if collection.count() == 0:
 else:
     print(f"기존 데이터 사용: {collection.count()}건")
 
-# --- 검색 함수도 직접 구현해야 함 ---
-
 # --- 의존성 ---
 
 @dataclass

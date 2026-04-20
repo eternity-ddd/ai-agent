@@ -31,8 +31,8 @@ def web_fetch(url: str) -> str:
 # --- Agent 정의 ---
 
 # PydanticAI의 WebSearch() 대응: OpenAI 네이티브 웹 검색을 사용
-# create_agent에 model="openai:gpt-4o"를 전달하면 OpenAI Responses API의
-# 네이티브 웹 검색이 자동으로 활성화됨
+# tools에 {"type": "web_search_preview"} 도구 스펙을 전달하면 LangChain이
+# 내부적으로 OpenAI Responses API로 라우팅해 네이티브 웹 검색이 활성화됨
 agent = create_agent(
     "openai:gpt-4o",
     tools=[{"type": "web_search_preview"}, web_fetch],
