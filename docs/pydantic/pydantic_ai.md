@@ -1292,6 +1292,47 @@ if __name__ == "__main__":
     asyncio.run(main())
 ```
 
+**LangChain과 비교** ([langchain/06-rag/01-rag.py](../../langchain/06-rag/01-rag.py))
+
+LangChain은 PDF 로더/청커/임베딩/벡터 DB/검색기가 모두 내장 컴포넌트로 제공되어, 같은 RAG를 **수 줄 수준으로 조립**할 수 있다.
+
+```python
+# LangChain — 각 단계가 한 줄
+docs = PyMuPDFLoader(PDF_PATH).load()
+chunks = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=100).split_documents(docs)
+vectorstore = Chroma.from_documents(chunks, OpenAIEmbeddings(...), persist_directory=CHROMA_PATH)
+retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
+```
+
+검색기 이후의 **프롬프트 주입 → LLM 호출 → 출력 파싱**까지 LCEL 파이프(`|`)로 선언적으로 연결된다. PydanticAI처럼 `@agent.tool`에 검색 함수를 등록하고 에이전트 루프에 맡길 필요 없이, 체인 자체가 RAG 흐름을 표현한다.
+
+```python
+prompt = ChatPromptTemplate.from_messages([
+    ("system", "검색된 문서를 기반으로 정확하게 답변해줘. 문서에 없는 내용은 추측하지 마.\n\n{context}"),
+    ("human", "{question}"),
+])
+
+chain = (
+    {"context": retriever | (lambda docs: "\n\n".join(d.page_content for d in docs)),
+     "question": RunnablePassthrough()}
+    | prompt
+    | init_chat_model("gpt-4o", model_provider="openai")
+    | StrOutputParser()
+)
+```
+
+| 단계 | PydanticAI | LangChain |
+|---|---|---|
+| PDF 로드 | `fitz.open()` + 루프 직접 구현 | `PyMuPDFLoader(path).load()` |
+| 청킹 | `split_text()` 직접 구현 | `RecursiveCharacterTextSplitter()` |
+| 임베딩 | `openai_client.embeddings.create()` 직접 호출 | `OpenAIEmbeddings()` |
+| 벡터 DB | `chromadb.PersistentClient()` 직접 관리 | `Chroma.from_documents()` |
+| 검색 | `collection.query()` + `@agent.tool` 등록 | `retriever` 파이프 연결 |
+| **총 라인 수** | **~90줄** | **~50줄** |
+| **DB 교체** | 전부 다시 구현 | `Chroma` → `FAISS` 한 줄 교체 |
+
+RAG처럼 표준화된 파이프라인에서는 **LangChain의 풍부한 내장 컴포넌트가 명확한 장점**이다. PydanticAI는 에이전트 코어에 집중하는 대신 이런 인프라성 기능은 직접 구현하거나 외부 라이브러리에 의존해야 한다.
+
 ---
 
 ## 7. 관측가능성 - Logfire
