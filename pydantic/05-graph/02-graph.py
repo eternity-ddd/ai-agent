@@ -112,11 +112,11 @@ class CheckScoreNode(BaseNode[WorkflowState, None, str]):
 
 # --- 그래프 조립 및 실행 ---
 
-movie_graph = Graph(
-    nodes=(InputNode, FindMovieNode, ReviewMovieNode, CheckScoreNode)
-)
-
 async def main():
+    movie_graph = Graph(
+        nodes=(InputNode, FindMovieNode, ReviewMovieNode, CheckScoreNode)
+    )
+
     print(movie_graph.mermaid_code())
     print("---")
 

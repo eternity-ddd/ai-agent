@@ -16,10 +16,13 @@ load_dotenv()
 
 # --- 모델 정의 ---
 
+# Agent 실행 중에 공유할 상태
+# Agent에 의존성 주입됨
 @dataclass
 class MyState:
     length: int
 
+# Agent의 최종 출력 타입
 class CityInfo(BaseModel):
     name: str
     country: str
@@ -27,7 +30,7 @@ class CityInfo(BaseModel):
 
 # --- Agent 정의 ---
 
-agent = Agent[MyState, CityInfo](
+agent = Agent[MyState, CityInfo](       # [의존성타입, 출력타입]
     "openai:gpt-4o",
     instructions="도시 정보를 정확히 알려줘",
     deps_type=MyState,      # type: ignore

@@ -1,10 +1,12 @@
 # LangChain
 
-- 파이프(`|`)로 구성 요소를 연결하는 LCEL이 핵심
-- 높은 추상화: 다양한 시나리오에 적합한 구성 요소를 프레임워크 안에 포함
-- 모델 직접 사용(`init_chat_model`)과 에이전트(`create_agent`) 두 가지 방식 제공
-- RAG, 히스토리 관리, 벡터 DB 등 인프라성 기능이 풍부
-- 높은 추상화는 장점이자 단점 — 각 상황에 적합한 구성 요소의 종류와 사용방법을 익혀야 구현 및 유지보수가 용이
+(+) **풍부한 built-in 컴포넌트** — RAG, 히스토리 관리, 벡터 DB 등 인프라성 기능 내장 ([6장](#6-rag))
+(+) **히스토리 자동 관리** — `RunnableWithMessageHistory` + `session_id`로 영속화까지 ([1-3](#1-3-멀티-턴multi-turn))
+(+) **LCEL 파이프(`|`)** — 구성 요소를 선언적으로 조합 ([1장](#1-기본))
+(+) **두 가지 실행 방식** — 모델 직접(`init_chat_model`) vs 에이전트(`create_agent`) 상황별 선택
+(-) **높은 추상화** — 상황별로 적합한 컴포넌트를 익혀야 하고 디버깅이 어려움
+(-) **타입 안전성 부족** — 상태 주입이 `{length}` 같은 문자열 키 기반, 오타 시 런타임 에러 ([2-1](#2-1-상태와-출력))
+(-) **방식의 이원화** — 체인(`with_structured_output`)과 에이전트(`response_format`)가 별도 방식 ([2-2a](#2-2a-에이전트에서-구조화된-출력))
 
 ---
 
@@ -234,7 +236,7 @@ if __name__ == "__main__":
 
 ### 2-1. 상태와 출력
 
-[02-deps-and-output/01-state-and-output.py](../../langchain/02-deps-and-output/01-state-and-output.py)
+[02-deps-and-output/01-deps-and-output.py](../../langchain/02-deps-and-output/01-deps-and-output.py)
 
 **구조화된 출력**
 
@@ -740,7 +742,7 @@ review_result = review_agent.invoke(
 )
 ```
 
-**파이프로 억지 연결 (02a-handoff-chain.py)**
+**파이프로 억지 연결** ([02a-handoff-chain.py](../../langchain/04-workflow/02a-handoff-chain.py))
 
 `RunnableLambda`로 파이프 연결은 가능하지만, lambda 안에 분기 로직이 들어가서 가독성이 떨어진다:
 

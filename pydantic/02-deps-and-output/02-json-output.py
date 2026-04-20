@@ -1,7 +1,7 @@
 """
 구조화된 출력을 JSON으로 변환하는 방법
 
-- 01-state-and-output.py와 동일한 구조에서
+- 01-deps-and-output.py와 동일한 구조에서
   model_dump_json()을 사용해 출력을 JSON 문자열로 직렬화하는 예제
 """
 import asyncio

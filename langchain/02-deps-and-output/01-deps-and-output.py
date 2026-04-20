@@ -8,7 +8,7 @@ with_structured_output을 사용한 구조화된 출력
 - 상태값을 프롬프트에 전달할 때 문자열 키({length})를 사용하므로 오타 시 런타임 에러 발생
   → PydanticAI는 RunContext[MyState]로 타입 안전하게 접근
 
-대응하는 pydantic 예제: pydantic/02-deps-and-output/01-state-and-output.py
+대응하는 pydantic 예제: pydantic/02-deps-and-output/01-deps-and-output.py
 """
 from dataclasses import dataclass
 
