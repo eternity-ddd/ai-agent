@@ -524,6 +524,9 @@ if __name__ == "__main__":
 
 ## 3. Tool을 이용한 Agent 구현
 
+에이전트에 도구를 등록하면 LLM이 필요한 도구를 스스로 판단해 호출한다.
+"생각 → 도구 호출 → 관찰 → 다시 생각" 루프가 바로 **ReAct 패턴**이며, LangChain에서는 `create_agent`가 이 루프를 내부에서 자동 수행한다.
+
 ### 3-1. Tool 등록
 
 [03-tool/01-tool.py](../../langchain/03-tool/01-tool.py) — 수동 실행, [03-tool/01a-agent.py](../../langchain/03-tool/01a-agent.py) — 자동 실행

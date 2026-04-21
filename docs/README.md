@@ -13,6 +13,21 @@ AI 에이전트는 **LLM이 스스로 판단하여 도구를 선택하고 실행
 
 이것이 가능한 이유는 **Function Calling** 덕분이다.
 
+### ReAct 에이전트
+
+자율적 에이전트의 대표 패턴. LLM이 **Thought(생각) → Action(도구 호출) → Observation(관찰) → Thought** 루프를 돌며 답을 만든다.
+
+```
+사용자 질문
+  → [Thought] "검색이 필요해"
+  → [Action]  web_search("서울 날씨")
+  → [Observation] "맑음, 20도"
+  → [Thought] "충분한 정보, 답변 가능"
+  → 최종 응답
+```
+
+오늘날 Function Calling 기반 에이전트의 사실상 표준 패턴으로, PydanticAI의 `@agent.tool`과 LangChain의 `create_agent`가 모두 이 루프를 내부적으로 자동화한다.
+
 ### Function Calling: 에이전트의 기반 기술
 
 Function Calling은 LLM이 **"이 함수를 이 인자로 호출해줘"**라고 구조화된 요청을 반환하는 기능이다.
@@ -59,7 +74,7 @@ score = review_score(movie)      # 3단계
 - 유연성이 떨어짐
 - 복잡해지면 main()이 비대해짐 → **그래프로 해결**
 
-**그래프** — 워크플로우를 구조화
+**그래프** — 워크플로우를 구조화(복잡한 **ReAct** 에이전트 개발)
 
 ```python
 # 단계를 노드로, 흐름을 엣지로 선언

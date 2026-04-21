@@ -514,6 +514,7 @@ async def validate_sql(ctx: RunContext[DatabaseConn], output: Output) -> Output:
 ## 3. Tool을 이용한 Agent 구현
 
 에이전트에 도구(Tool)를 등록하면, LLM이 프롬프트를 분석하여 적절한 도구를 **자동으로 선택하고 호출**한다.
+"생각 → 도구 호출 → 관찰 → 다시 생각" 루프가 바로 **ReAct 패턴**이며, PydanticAI는 `@agent.tool` 등록만으로 이 루프를 내부에서 자동 수행한다.
 
 ### 3-1. Tool 등록
 
