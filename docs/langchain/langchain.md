@@ -4,6 +4,7 @@
 (+) **히스토리 자동 관리** — `RunnableWithMessageHistory` + `session_id`로 영속화까지       
 (+) **LCEL 파이프(`|`)** — 구성 요소를 선언적으로 조합       
 (+) **두 가지 실행 방식** — 모델 직접(`init_chat_model`) vs 에이전트(`create_agent`) 상황별 선택       
+(+) **LangGraph의 고급 실행 제어** — checkpointer로 상태 영속화, `interrupt()`/`Command(resume)`로 중단·재개·HITL, 시간여행 지원       
 (-) **높은 추상화** — 상황별로 적합한 컴포넌트를 익혀야 하고 디버깅이 어려움       
 (-) **타입 안전성 부족** — 상태 주입이 `{length}` 같은 문자열 키 기반, 오타 시 런타임 에러       
 (-) **방식의 이원화** — 체인(`with_structured_output`)과 에이전트(`response_format`)가 별도 방식       
@@ -31,13 +32,14 @@
   - [5-1. 복잡한 워크플로우의 문제점](#5-1-복잡한-워크플로우의-문제점)
   - [5-2. LangGraph로 해결](#5-2-langgraph로-해결)
 - [6. RAG](#6-rag)
-- [7.평가 : 복잡성과 비일관성](#7평가--복잡성과-비일관성)
+- [7.평가 : 비일관성과 강력함의 혼재](#7평가--비일관성과-강력함의-혼재)
   - [7-1. 구조화된 출력](#7-1-구조화된-출력)
   - [7-2. 도구 등록](#7-2-도구-등록)
   - [7-3. 히스토리 관리](#7-3-히스토리-관리)
   - [7-4. 에이전트 생성](#7-4-에이전트-생성)
   - [7-5. 패키지 분할](#7-5-패키지-분할)
-  - [7-6. 현재의 상태(AI 의견)](#7-6-현재의-상태ai-의견)
+  - [7-6. LangGraph의 고급 실행 제어](#7-6-langgraph의-고급-실행-제어)
+  - [7-7. 현재의 상태(AI 의견)](#7-7-현재의-상태ai-의견)
 
 ---
 
@@ -1368,7 +1370,7 @@ if __name__ == "__main__":
 
 ---
 
-## 7.평가 : 복잡성과 비일관성
+## 7.평가 : 비일관성과 강력함의 혼재
 
 LangChain은 같은 목적을 달성하는 방법이 여러 개씩 공존한다.<br> 
 LCEL → Agent Executor → LangGraph로 진화하면서 **과거 API를 deprecate하지 않고 유지** 해왔기 때문에 추상화가 비일관적이고 러닝 커브가 상승한다.
@@ -1454,7 +1456,104 @@ Runnable 계열과 LangGraph 계열이 독립적으로 진화해서 **동일 개
 같은 클래스가 버전 간 패키지를 옮겨 다닌다(예: 임베딩이 `langchain.embeddings` → `langchain_community.embeddings` → `langchain_openai`).<br>
 예제 코드의 `import` 경로가 실제 패키지와 어긋나 `ImportError`를 만나는 일이 흔하다.
 
-### 7-6. 현재의 상태(AI 의견)
+### 7-6. LangGraph의 고급 실행 제어
+
+[07-tradeoff/01-graph-resume.py](../../langchain/07-tradeoff/01-graph-resume.py) — 중단·재개  
+[07-tradeoff/02-time-travel.py](../../langchain/07-tradeoff/02-time-travel.py) — 시간여행
+
+비일관성의 대가로 얻는 것은 **체인·AgentExecutor에 없는 고급 실행 제어**다. LangGraph 계열을 택했을 때 네 가지 기능이 추가로 열린다.
+
+#### 상태 영속화 (checkpointer)
+
+그래프의 **상태 + 실행 위치**가 checkpointer에 자동 저장된다. 같은 `thread_id`로 invoke하면 이전 지점에서 이어서 실행된다.
+
+```python
+from langgraph.checkpoint.sqlite import SqliteSaver
+
+graph = builder.compile(
+    checkpointer=SqliteSaver(sqlite3.connect("workflow.db", check_same_thread=False))
+)
+config = {"configurable": {"thread_id": "user-1"}}
+graph.invoke(input_dict, config=config)   # 다음 호출에서 이어서 실행 가능
+```
+
+체인의 `ChatMessageHistory`가 "메시지만" 저장한다면, LangGraph의 checkpointer는 "그래프 실행 전체 상태"를 저장한다.
+
+#### 실행 중단·재개 (interrupt + Command)
+
+노드 안에서 `interrupt()`를 호출하면 그래프가 멈추고 결과에 `__interrupt__`가 실린다. 다음 invoke에서 `Command(resume=값)`을 넘기면 그 값이 interrupt 자리로 들어오며 이어서 실행된다.
+
+```python
+from langgraph.types import Command, interrupt
+
+def approval_node(state):
+    answer = interrupt(f"'{state['movie']}' 리뷰를 찾을까요?")
+    return {"approved": answer == "yes"}
+
+# 1차: interrupt에서 정지
+first = graph.invoke(input_dict, config=config)
+print(first["__interrupt__"])   # → [Interrupt(value='...', ...)]
+
+# 2차: Command(resume=...)로 재개 (다른 프로세스여도 됨)
+final = graph.invoke(Command(resume="yes"), config=config)
+```
+
+두 invoke 사이에 **프로세스가 종료되어도 무관**하다. 상태가 checkpointer에 남아 있으므로 CLI 재시작·분산 워커 간 재개가 가능하다.
+
+#### HITL (Human-in-the-loop)
+
+위 `interrupt()`가 HITL의 기본 프리미티브다. "도구 호출 전 사람 승인", "위험한 작업 전 확인" 같은 패턴을 **그래프 문법에 자연스럽게 녹일 수 있다**. AgentExecutor나 체인에는 이런 프리미티브가 없어 콜백으로 우회 구현해야 한다.
+
+```python
+# 예: 이메일 발송 도구에 사람 승인을 끼워 넣기
+def send_email_node(state):
+    approval = interrupt({
+        "action": "send_email",
+        "to": state["recipient"],
+        "body": state["draft"],
+    })
+    if approval["action"] != "approve":
+        return {"sent": False, "reason": "rejected"}
+    actually_send(state["recipient"], state["draft"])
+    return {"sent": True}
+```
+
+#### 시간여행 (time travel)
+
+체크포인트 이력을 조회하고, 과거 시점 상태를 편집한 뒤 그 시점부터 다시 실행할 수 있다.
+
+```python
+# 체크포인트 이력 조회 (최신순)
+history = list(graph.get_state_history(config))
+for snapshot in history:
+    print(snapshot.values, snapshot.next)
+
+# 특정 과거 시점 찾기 (예: dbl 노드 직전)
+target = next(s for s in history if s.next == ("dbl",))
+
+# 그 시점 상태를 편집 → 새 체크포인트 생성
+new_config = graph.update_state(target.config, {"counter": 100})
+
+# 편집된 시점부터 재실행 (None = 기존 상태로 계속)
+replayed = graph.invoke(None, config=new_config)
+```
+
+디버깅·실험(다른 분기 탐색)에 유용하다. "만약 이 단계에서 다른 값이었다면 결과가 어떻게 달라졌을까"를 **실제로 돌려볼 수 있다**.
+
+---
+
+**정리**
+
+| 기능 | 체인 / AgentExecutor | LangGraph |
+|---|---|---|
+| 상태 영속화 | 메시지 히스토리만 (`ChatMessageHistory`) | 전체 상태 + 실행 위치 (`checkpointer`) |
+| 실행 중단·재개 | ✗ | ✓ (프로세스 재시작 간에도 유지) |
+| HITL | 콜백·커스텀 래퍼로 우회 | ✓ (1급 프리미티브: `interrupt`) |
+| 시간여행 | ✗ | ✓ (과거 편집·재실행) |
+
+**비일관성과 강력함의 혼재** — LangGraph 계열로 넘어가면 API가 달라지는 비용을 치러야 하지만, 그 대가로 **다른 프레임워크에 없는 실행 제어 도구**를 얻는다. 에이전트가 단순 프롬프트-응답을 넘어 **장시간·중단가능·사람 개입**이 있는 실무 워크플로우로 확장될 때, 이 기능들이 있고 없고의 차이가 프레임워크 선택을 가른다.
+
+### 7-7. 현재의 상태(AI 의견)
 
 **그럼 지금은 많이 안정화되었는가**
 
