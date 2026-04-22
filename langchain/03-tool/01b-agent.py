@@ -1,12 +1,10 @@
 """
-create_agent를 사용한 도구 정의 (자동 실행)
+create_agent를 사용한 도구 정의 (자동 실행, 최신 권장 방식)
 
-- create_agent는 도구 호출 → 실행 → 결과 전달 → 재호출 루프를 자동으로 처리
+- create_agent는 내부적으로 LangGraph StateGraph를 생성하는 고수준 래퍼
+- 도구 호출 → 실행 → 결과 전달 → 재호출 루프를 자동 처리
 - 01-tool.py에서 직접 구현했던 도구 호출 루프가 필요 없음
-- args_schema로 도구 인자에 Pydantic BaseModel 검증을 추가 (01-tool.py와 동일)
-- PydanticAI의 @agent.tool과 동일한 수준의 자동화
-
-→ 01-tool.py와 비교하여 보일러플레이트가 얼마나 줄어드는지 확인
+- 01a-executor.py(AgentExecutor 레거시)와 비교하면 훨씬 간결
 
 대응하는 pydantic 예제: pydantic/03-tool/01-tool.py
 """

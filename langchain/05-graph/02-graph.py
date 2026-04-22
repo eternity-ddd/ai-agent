@@ -59,7 +59,7 @@ score_agent = create_agent(
 
 # --- 노드 정의 ---
 
-def input_node(state: WorkflowState) -> WorkflowState:
+def input_node(state: WorkflowState) -> dict:
     """사용자로부터 영화 개봉 연도를 입력받는 노드"""
     year = Prompt.ask("영화 개봉 연도를 입력하세요")
     return {"year": year}
@@ -125,6 +125,7 @@ def main():
     print(movie_graph.get_graph().draw_mermaid())
     print("---")
 
+    # TypedDict의 모든 키를 초기에 제공해야 하며, 각 노드에서 필요한 값으로 덮어쓴다
     result = movie_graph.invoke({
         "year": "",
         "movie_title": "",

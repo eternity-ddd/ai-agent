@@ -9,6 +9,7 @@ LangChain 내장 도구 사용법
 대응하는 pydantic 예제: pydantic/03-tool/02-capability.py
 """
 from dotenv import load_dotenv
+from langchain.chat_models import init_chat_model
 from langchain_community.document_loaders import WebBaseLoader
 from langchain_core.tools import tool
 from langchain.agents import create_agent
@@ -34,7 +35,7 @@ def web_fetch(url: str) -> str:
 # tools에 {"type": "web_search_preview"} 도구 스펙을 전달하면 LangChain이
 # 내부적으로 OpenAI Responses API로 라우팅해 네이티브 웹 검색이 활성화됨
 agent = create_agent(
-    "openai:gpt-4o",
+    init_chat_model("gpt-4o", model_provider="openai"),
     tools=[{"type": "web_search_preview"}, web_fetch],
 )
 

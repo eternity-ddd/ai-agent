@@ -6,7 +6,7 @@
 - bind_tools()는 LLM에게 도구 스키마만 전달할 뿐, 실제 실행은 하지 않음
 - 개발자가 tool_calls를 꺼내서 직접 실행하는 루프를 구현해야 함
 
-→ create_agent를 사용하면 이 루프가 자동 처리됨 (01a-agent.py 참고)
+→ create_agent를 사용하면 이 루프가 자동 처리됨 (01b-agent-executor.py 참고)
 
 대응하는 pydantic 예제: pydantic/03-tool/01-tool.py
 """
