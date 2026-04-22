@@ -1,14 +1,16 @@
 # LangChain
 
 (+) **풍부한 built-in 컴포넌트** — RAG, 히스토리 관리, 벡터 DB 등 인프라성 기능 내장       
-(+) **히스토리 자동 관리** — `RunnableWithMessageHistory` + `session_id`로 영속화까지       
 (+) **LCEL 파이프(`|`)** — 구성 요소를 선언적으로 조합       
-(+) **두 가지 실행 방식** — 모델 직접(`init_chat_model`) vs 에이전트(`create_agent`) 상황별 선택       
 (+) **LangGraph의 고급 실행 제어** — checkpointer로 상태 영속화, `interrupt()`/`Command(resume)`로 중단·재개·HITL, 시간여행 지원       
 (-) **높은 추상화** — 상황별로 적합한 컴포넌트를 익혀야 하고 디버깅이 어려움       
 (-) **타입 안전성 부족** — 상태 주입이 `{length}` 같은 문자열 키 기반, 오타 시 런타임 에러       
-(-) **방식의 이원화** — 체인(`with_structured_output`)과 에이전트(`response_format`)가 별도 방식       
 (-) **비일관성** — 같은 목적(구조화 출력, 도구, 히스토리 등)에 공존하는 API가 여러 개
+
+> **설계 철학**  
+> LangChain은 **"컴포넌트 조립"** 철학 — LCEL 파이프로 prompt/llm/parser 등을 선언적으로 연결.  
+> PydanticAI는 **"타입 안전한 단일 Agent"** 철학 — 하나의 `Agent`가 상태·도구·출력을 통합.  
+> 이후 비교에서 자주 갈리는 지점이므로 배경으로 참고.
 
 ## 목차
 
@@ -32,14 +34,8 @@
   - [5-1. 복잡한 워크플로우의 문제점](#5-1-복잡한-워크플로우의-문제점)
   - [5-2. LangGraph로 해결](#5-2-langgraph로-해결)
 - [6. RAG](#6-rag)
-- [7.평가 : 비일관성과 강력함의 혼재](#7평가--비일관성과-강력함의-혼재)
-  - [7-1. 구조화된 출력](#7-1-구조화된-출력)
-  - [7-2. 도구 등록](#7-2-도구-등록)
-  - [7-3. 히스토리 관리](#7-3-히스토리-관리)
-  - [7-4. 에이전트 생성](#7-4-에이전트-생성)
-  - [7-5. 패키지 분할](#7-5-패키지-분할)
-  - [7-6. LangGraph의 고급 실행 제어](#7-6-langgraph의-고급-실행-제어)
-  - [7-7. 현재의 상태(AI 의견)](#7-7-현재의-상태ai-의견)
+- [7. 평가](#7-평가)
+  - [[참고] PydanticAI가 제공하지 않는 기능들](#참고-pydanticai가-제공하지-않는-기능들)
 
 ---
 
@@ -1370,7 +1366,7 @@ if __name__ == "__main__":
 
 ---
 
-## 7.평가 : 비일관성과 강력함의 혼재
+## 7. 평가
 
 LangChain은 같은 목적을 달성하는 방법이 여러 개씩 공존한다.<br> 
 LCEL → Agent Executor → LangGraph로 진화하면서 **과거 API를 deprecate하지 않고 유지** 해왔기 때문에 추상화가 비일관적이고 러닝 커브가 상승한다.
@@ -1379,89 +1375,46 @@ LCEL → Agent Executor → LangGraph로 진화하면서 **과거 API를 depreca
 - 튜토리얼/기존 코드에 세대가 섞여 있어 **어느 스타일을 보고 있는지 매번 구분**해야 함
 - 방식에 따라 사용할 수 있는 기능 조합이 제한됨
 
-이 장은 목적별로 공존하는 방법들을 한눈에 비교하는 카탈로그다.
+**그럼 지금은 많이 안정화되었는가** (AI 의견)
 
-### 7-1. 구조화된 출력
+부분적으로는 안정화되었지만 완전히 자리잡았다고 보긴 어렵다. 영역별로 차이가 크다.
 
-LLM 응답을 구조화된 객체로 받는 방법이 네 가지 공존한다.
+**안정화된 영역**
 
-| 방법 | API | 반환 타입 | 메커니즘 | 실행 시점 |
-|---|---|---|---|---|
-| `with_structured_output` | `llm.with_structured_output(CityInfo)` | Pydantic 인스턴스 | tool calling (API 강제) | 매 LLM 호출마다 |
-| `JsonOutputParser` | `chain \| JsonOutputParser(pydantic_object=CityInfo)` | dict | 프롬프트 지시 (무시 가능) | 매 LLM 호출마다 |
-| `PydanticOutputParser` | `chain \| PydanticOutputParser(pydantic_object=CityInfo)` | Pydantic 인스턴스 | 프롬프트 지시 (무시 가능) | 매 LLM 호출마다 |
-| `response_format` | `create_agent(response_format=CityInfo)` | `result["structured_response"]` | tool calling | 에이전트 루프 종료 시 |
+- **코어 추상화**: `Runnable` 프로토콜, LCEL 파이프(`|`), `ChatPromptTemplate`, `StrOutputParser`, `init_chat_model`, `with_structured_output` — 최근 1~2년간 거의 변하지 않음
+- **LangGraph 런타임**: `StateGraph`, checkpointer 인터페이스 — breaking change가 적고 프로덕션 사례 축적
 
-**비일관성 포인트**: 반환 타입도, 결과 접근 방식(`result` 자체 vs `result["structured_response"]` 등)도, 강제력(API vs 프롬프트)도 제각각. PydanticAI는 `output_type` 하나로 통일되어 있다.
+**여전히 움직이는 영역**
 
-### 7-2. 도구 등록
+- **에이전트 API**: `create_agent`는 비교적 최근에 `langchain.agents`로 통합되어 세부 변화가 있음. 구세대 `AgentExecutor`/`initialize_agent`가 deprecate되지 않아 튜토리얼과 서드파티 코드에 섞임. `create_react_agent`가 두 모듈에 다른 구현으로 존재
+- **패키지 생태계**: 모델·벡터 DB 통합 패키지가 계속 늘어나고 경로가 이동(`langchain_community` → `langchain_openai` 등)
+- **메모리/상태 관리**: `ConversationBufferMemory` → `RunnableWithMessageHistory` → LangGraph checkpointer로의 이주가 진행 중
 
-"검색 도구 하나 붙이기"에 최소 네 가지 경로가 있다.
-
-| 경로 | 출처 | 실행 위치 | 코드 형태 |
-|---|---|---|---|
-| 직접 작성 + `bind_tools` | 개발자 | 로컬 + 수동 호출 루프 | `@tool def f(): ...` + `while response.tool_calls` |
-| 직접 작성 + `create_agent` | 개발자 | 로컬 + 자동 루프 | `create_agent(tools=[f])` |
-| 모델 네이티브 dict | 모델 제공자 | 제공자 서버 | `bind_tools([{"type": "web_search_preview"}])` |
-| 프레임워크 제공 | `langchain_community.tools` | 로컬 | `DuckDuckGoSearchRun()` |
-
-**비일관성 포인트**<br> 
-tool을 위한 통일된 인터페이스가 없다.<br> 
-네이티브 dict는 제공자 종속적(OpenAI면 `web_search_preview`, Anthropic이면 다른 문자열)이고, 일반 `@tool`과 함께 섞어 쓸 때는 어느 도구가 로컬 실행인지 개발자가 구분해야 한다.
-
-### 7-3. 히스토리 관리
-
-멀티 턴 대화 유지에 세 가지 축 × 두 가지 인프라 = 6가지 구현이 가능하다.
-
-| | 메모리 저장소 | DB 저장소 | 식별자 | 래퍼 |
-|---|---|---|---|---|
-| 체인 (Runnable 계열) | `InMemoryChatMessageHistory` | `SQLChatMessageHistory` | `session_id` | `RunnableWithMessageHistory` |
-| 에이전트 (LangGraph 계열) | `InMemorySaver` | `SqliteSaver` | `thread_id` | `create_agent(checkpointer=...)` |
-| 그래프 (LangGraph 계열) | `InMemorySaver` | `SqliteSaver` | `thread_id` | `StateGraph.compile(checkpointer=...)` |
-
-**비일관성 포인트** <br> 
-Runnable 계열과 LangGraph 계열이 독립적으로 진화해서 **동일 개념에 이름·인터페이스가 다르게 붙어 있다**.<br> 
-에이전트와 그래프는 `create_agent`가 LangGraph의 래퍼라서 인터페이스가 동일하지만, 체인은 완전히 다른 계열이다.
-
-### 7-4. 에이전트 생성
-
-과거 API가 deprecate되지 않고 남아 있어, 한 코드베이스에 여러 세대가 섞일 수 있다.
-
-| 방법 | 상태 | 비고 |
+| | 2023 말 | 현재 |
 |---|---|---|
-| `create_agent` | 최신 권장 | 내부적으로 LangGraph |
-| `StateGraph` 직접 작성 | 저수준 권장 | 그래프 모델 그대로 사용 |
-| `AgentExecutor` + `create_tool_calling_agent` / `create_react_agent` | 레거시 (여전히 동작) | 튜토리얼에 여전히 등장 |
-| `langgraph.prebuilt.create_react_agent` | 신세대 ReAct | 위와 **이름은 같지만 다른 구현** |
-| `initialize_agent` | Deprecated | 여전히 import 가능 |
+| 코어 API 변경 빈도 | 매주 | 수개월에 한 번 |
+| LCEL | 새 기능, 혼란 | 표준 |
+| 에이전트 API | 격변 중 | `create_agent`로 수렴 중이나 레거시 혼재 |
+| 패키지 구조 | 모놀리식 | 분할 완료, 계속 늘어남 |
+| 프로덕션 채택 | 실험적 | 실사용 보편화 |
 
-**비일관성 포인트** <br>
-같은 이름(`create_react_agent`)이 **다른 모듈에서 다른 구현**으로 존재한다.<br>
-튜토리얼을 따라하다가 어느 세대 코드를 보고 있는지 매번 확인해야 한다.
+**결론**: "초기의 급격한 변화는 지나갔다" 수준에서 "Django/Rails만큼 안정적" 사이 어딘가다.
 
-### 7-5. 패키지 분할
+- **코어(LCEL + LangGraph)만 쓰는 새 프로젝트**라면 이제 안전하게 써도 된다
+- **튜토리얼을 따라하거나 레거시 코드를 관리**해야 한다면 여전히 세대 구분 비용이 남아 있다 — 이 장의 비일관성이 그 비용이다
 
-한 프레임워크의 기능이 6개 이상 패키지로 흩어져 있다.
+쓰기 시작할 때의 고민은 줄었지만, 생태계를 돌아다니며 예제를 참고할 때의 고민은 여전히 존재한다.
 
-| 기능 | 주 패키지 |
-|---|---|
-| 코어 추상 (`Runnable`, `ChatPromptTemplate`, `StrOutputParser`) | `langchain_core` |
-| 주요 래퍼 (`create_agent`, `init_chat_model`) | `langchain` |
-| 모델 통합 | `langchain_openai`, `langchain_anthropic`, `langchain_google_genai`, ... |
-| 벡터 DB 통합 | `langchain_chroma`, `langchain_pinecone`, ... |
-| 로더·일부 도구·레거시 | `langchain_community` |
-| 그래프·체크포인터 | `langgraph`, `langgraph-checkpoint-sqlite`, `langgraph-checkpoint-postgres`, ... |
+**하지만 PydanticAI가 제공하지 않는 다양한 기능들을 사용할 필요가 있거나, 복잡한 워크플로우를 처리하거나, RAG 작업이 필요하다면 LangGraph를 사용하는 것이 좋아 보인다.**
 
-**비일관성 포인트** <br> 
-같은 클래스가 버전 간 패키지를 옮겨 다닌다(예: 임베딩이 `langchain.embeddings` → `langchain_community.embeddings` → `langchain_openai`).<br>
-예제 코드의 `import` 경로가 실제 패키지와 어긋나 `ImportError`를 만나는 일이 흔하다.
+**권장**: 새 코드라면 **LangGraph 계열(`create_agent` 또는 `StateGraph`) + 최신 패키지 경로**로 통일한다. 유연성의 대가를 줄이는 가장 현실적인 방법이다.
 
-### 7-6. LangGraph의 고급 실행 제어
 
-[07-tradeoff/01-graph-resume.py](../../langchain/07-tradeoff/01-graph-resume.py) — 중단·재개  
-[07-tradeoff/02-time-travel.py](../../langchain/07-tradeoff/02-time-travel.py) — 시간여행
+---
+### [참고] PydanticAI가 제공하지 않는 기능들의 예
 
-비일관성의 대가로 얻는 것은 **체인·AgentExecutor에 없는 고급 실행 제어**다. LangGraph 계열을 택했을 때 네 가지 기능이 추가로 열린다.
+[07-advanced/01-graph-resume.py](../../langchain/07-advanced/01-graph-resume.py) — 중단·재개  
+[07-advanced/02-time-travel.py](../../langchain/07-advanced/02-time-travel.py) — 시간여행
 
 #### 상태 영속화 (checkpointer)
 
@@ -1522,6 +1475,8 @@ def send_email_node(state):
 
 체크포인트 이력을 조회하고, 과거 시점 상태를 편집한 뒤 그 시점부터 다시 실행할 수 있다.
 
+디버깅·실험(다른 분기 탐색)에 유용하다. "만약 이 단계에서 다른 값이었다면 결과가 어떻게 달라졌을까"를 **실제로 돌려볼 수 있다**.
+
 ```python
 # 체크포인트 이력 조회 (최신순)
 history = list(graph.get_state_history(config))
@@ -1538,53 +1493,4 @@ new_config = graph.update_state(target.config, {"counter": 100})
 replayed = graph.invoke(None, config=new_config)
 ```
 
-디버깅·실험(다른 분기 탐색)에 유용하다. "만약 이 단계에서 다른 값이었다면 결과가 어떻게 달라졌을까"를 **실제로 돌려볼 수 있다**.
-
----
-
-**정리**
-
-| 기능 | 체인 / AgentExecutor | LangGraph |
-|---|---|---|
-| 상태 영속화 | 메시지 히스토리만 (`ChatMessageHistory`) | 전체 상태 + 실행 위치 (`checkpointer`) |
-| 실행 중단·재개 | ✗ | ✓ (프로세스 재시작 간에도 유지) |
-| HITL | 콜백·커스텀 래퍼로 우회 | ✓ (1급 프리미티브: `interrupt`) |
-| 시간여행 | ✗ | ✓ (과거 편집·재실행) |
-
-**비일관성과 강력함의 혼재** — LangGraph 계열로 넘어가면 API가 달라지는 비용을 치러야 하지만, 그 대가로 **다른 프레임워크에 없는 실행 제어 도구**를 얻는다. 에이전트가 단순 프롬프트-응답을 넘어 **장시간·중단가능·사람 개입**이 있는 실무 워크플로우로 확장될 때, 이 기능들이 있고 없고의 차이가 프레임워크 선택을 가른다.
-
-### 7-7. 현재의 상태(AI 의견)
-
-**그럼 지금은 많이 안정화되었는가**
-
-부분적으로는 안정화되었지만 완전히 자리잡았다고 보긴 어렵다. 영역별로 차이가 크다.
-
-**안정화된 영역**
-
-- **코어 추상화**: `Runnable` 프로토콜, LCEL 파이프(`|`), `ChatPromptTemplate`, `StrOutputParser`, `init_chat_model`, `with_structured_output` — 최근 1~2년간 거의 변하지 않음
-- **LangGraph 런타임**: `StateGraph`, checkpointer 인터페이스 — breaking change가 적고 프로덕션 사례 축적
-
-**여전히 움직이는 영역**
-
-- **에이전트 API**: `create_agent`는 비교적 최근에 `langchain.agents`로 통합되어 세부 변화가 있음. 구세대 `AgentExecutor`/`initialize_agent`가 deprecate되지 않아 튜토리얼과 서드파티 코드에 섞임. `create_react_agent`가 두 모듈에 다른 구현으로 존재
-- **패키지 생태계**: 모델·벡터 DB 통합 패키지가 계속 늘어나고 경로가 이동(`langchain_community` → `langchain_openai` 등)
-- **메모리/상태 관리**: `ConversationBufferMemory` → `RunnableWithMessageHistory` → LangGraph checkpointer로의 이주가 진행 중
-
-| | 2023 말 | 현재 |
-|---|---|---|
-| 코어 API 변경 빈도 | 매주 | 수개월에 한 번 |
-| LCEL | 새 기능, 혼란 | 표준 |
-| 에이전트 API | 격변 중 | `create_agent`로 수렴 중이나 레거시 혼재 |
-| 패키지 구조 | 모놀리식 | 분할 완료, 계속 늘어남 |
-| 프로덕션 채택 | 실험적 | 실사용 보편화 |
-
-**결론**: "초기의 급격한 변화는 지나갔다" 수준에서 "Django/Rails만큼 안정적" 사이 어딘가다.
-
-- **코어(LCEL + LangGraph)만 쓰는 새 프로젝트**라면 이제 안전하게 써도 된다
-- **튜토리얼을 따라하거나 레거시 코드를 관리**해야 한다면 여전히 세대 구분 비용이 남아 있다 — 이 장의 비일관성이 그 비용이다
-
-쓰기 시작할 때의 고민은 줄었지만, 생태계를 돌아다니며 예제를 참고할 때의 고민은 여전히 존재한다.
-
-**권장**: 
-새 코드라면 **LangGraph 계열(`create_agent` 또는 `StateGraph`) + 최신 패키지 경로**로 통일한다. 유연성의 대가를 줄이는 가장 현실적인 방법이다.
 
