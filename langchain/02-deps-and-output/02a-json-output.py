@@ -42,7 +42,7 @@ prompt = ChatPromptTemplate.from_messages([
 
 llm = init_chat_model("gpt-4o", model_provider="openai")
 
-parser = JsonOutputParser()
+parser = JsonOutputParser(pydantic_object=CityInfo)
 
 chain = prompt | llm | parser
 

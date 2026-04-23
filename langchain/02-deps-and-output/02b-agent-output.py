@@ -45,8 +45,13 @@ def main():
     result = agent.invoke(
         {"messages": [{"role": "user", "content": "서울에 대해 알려줘"}]}
     )
-    # 구조화된 출력은 마지막 메시지의 content에 JSON으로 반환됨
+    # Pydantic 인스턴스의 기본 repr (name='...' country='...' population=...)
     print(result["structured_response"])
+    print()
+
+    # JSON 문자열로 직렬화
+    city: CityInfo = result["structured_response"]
+    print(city.model_dump_json(indent=2))
 
 if __name__ == "__main__":
     main()

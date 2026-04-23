@@ -2,7 +2,7 @@
 
 (+) **풍부한 built-in 컴포넌트** — RAG, 히스토리 관리, 벡터 DB 등 인프라성 기능 내장       
 (+) **LCEL 파이프(`|`)** — 구성 요소를 선언적으로 조합       
-(+) **LangGraph의 고급 실행 제어** — checkpointer로 상태 영속화, `interrupt()`/`Command(resume)`로 중단·재개·HITL, 시간여행 지원       
+(+) **LangGraph의 고급 기능** — checkpointer로 상태 영속화, `interrupt()`/`Command(resume)`로 중단·재개·HITL, 시간여행 지원       
 (-) **높은 추상화** — 상황별로 적합한 컴포넌트를 익혀야 하고 디버깅이 어려움       
 (-) **타입 안전성 부족** — 상태 주입이 `{length}` 같은 문자열 키 기반, 오타 시 런타임 에러       
 (-) **비일관성** — 같은 목적(구조화 출력, 도구, 히스토리 등)에 공존하는 API가 여러 개
@@ -21,7 +21,8 @@
 - [2. 의존성과 출력 관리](#2-의존성과-출력-관리)
   - [2-1. 상태(의존성)와 출력](#2-1-상태의존성와-출력)
   - [2-2. JSON 출력](#2-2-json-출력)
-  - [2-2a. 에이전트에서 구조화된 출력](#2-2a-에이전트에서-구조화된-출력)
+  - [2-2a. JSON 출력 + Pydantic 스키마](#2-2a-json-출력--pydantic-스키마)
+  - [2-2b. 에이전트에서 구조화된 출력](#2-2b-에이전트에서-구조화된-출력)
   - [2-3. Pydantic Validation 체크](#2-3-pydantic-validation-체크)
 - [3. Tool을 이용한 Agent 구현](#3-tool을-이용한-agent-구현)
   - [3-1. Tool 등록](#3-1-tool-등록)
@@ -49,7 +50,7 @@ LangChain에서는 `init_chat_model`로 LLM을 생성하고, `ChatPromptTemplate
 
 **체인 구성**
 
-LangChain의 핵심은 LCEL(LangChain Expression Language)의 파이프(`|`)이다.
+LangChain의 핵심은 LCEL(LangChain Expression Language)의 파이프(`|`)이다.<br>
 프롬프트, LLM, 출력 파서를 선언적으로 연결한다.
 
 ```python
@@ -396,32 +397,97 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+"""
+name='서울' country='대한민국' population=9741389
+"""
 ```
 
 ### 2-2. JSON 출력
 
 [02-deps-and-output/02-json-output.py](../../langchain/02-deps-and-output/02-json-output.py)
 
-`JsonOutputParser`는 두 가지 역할을 한다:
-- LLM에게 "이 JSON 형식으로 답해"라고 **지시** (프롬프트에 삽입)
-- LLM 응답을 실제로 dict로 **파싱**
+`JsonOutputParser()`를 단독으로 쓰면 **LLM이 임의의 구조로 JSON을 생성**하고, 파서는 그걸 dict로 파싱만 한다.
+
+```python
+parser = JsonOutputParser()
+chain = prompt | llm | parser
+```
+
+- `parser.get_format_instructions()`는 "JSON 객체로 답하라"는 일반적 지시만 포함 — **구체 스키마 없음**
+- LLM이 필드 이름·개수를 자유롭게 결정 → 호출마다 응답 구조가 달라질 수 있음
+- 반환 타입은 dict (키·값 구조는 LLM의 선택)
+
+예시 출력(호출마다 다름):
+
+```python
+{'city': '서울', 'country': '대한민국', 'population': '약 950만',
+ 'area': '605.21 km²', 'description': '...'}
+```
+
+구조 일관성이 필요하면 **2-2a**(Pydantic 스키마 지시)나 **2-2b**(에이전트 `response_format`)로 넘어가야 한다.
+
+**전체 코드**
+
+```python
+from dataclasses import dataclass
+
+from dotenv import load_dotenv
+from pydantic import BaseModel
+from langchain.chat_models import init_chat_model
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import JsonOutputParser
+
+load_dotenv()
+
+@dataclass
+class MyState:
+    length: int
+
+state = MyState(200)
+
+class CityInfo(BaseModel):
+    name: str
+    country: str
+    population: int
+
+prompt = ChatPromptTemplate.from_messages([
+    ("system", "도시 정보를 정확히 알려줘. 결과는 {length} 글자 이내로 작성해줘.\n{format_instructions}"),
+    ("human", "{question}"),
+])
+
+llm = init_chat_model("gpt-4o", model_provider="openai")
+
+parser = JsonOutputParser()
+
+chain = prompt | llm | parser
+
+def main():
+    response = chain.invoke({
+        "length": state.length,
+        "question": "서울에 대해 알려줘",
+        "format_instructions": parser.get_format_instructions(),
+    })
+    print(response)
+
+if __name__ == "__main__":
+    main()
+```
+
+### 2-2a. JSON 출력 + Pydantic 스키마
+
+[02-deps-and-output/02a-json-output.py](../../langchain/02-deps-and-output/02a-json-output.py)
+
+`JsonOutputParser(pydantic_object=CityInfo)`로 스키마를 지시하면 LLM이 **정해진 필드 구조**로 응답하도록 유도할 수 있다.
 
 ```python
 parser = JsonOutputParser(pydantic_object=CityInfo)
 chain = prompt | llm | parser
 ```
 
-**반환 타입의 차이**
-
-| | 반환 타입 |
-|---|---|
-| `with_structured_output(CityInfo)` | Pydantic 인스턴스 (`CityInfo`) |
-| `JsonOutputParser(pydantic_object=CityInfo)` | dict (JSON 파싱 결과) |
-
-**PydanticAI와 비교**
-
-PydanticAI는 `model_dump_json()` 한 줄로 끝나지만,
-LangChain은 parser 생성 + `format_instructions` 주입 + 파이프 연결이 필요하다.
+- `parser.get_format_instructions()`가 `CityInfo` 스키마를 포함한 지시문을 생성해 프롬프트에 삽입
+- LLM이 지시를 따르면 `{"name": ..., "country": ..., "population": ...}` 형태로 응답
+- 반환 타입은 여전히 **dict** (Pydantic 인스턴스가 아님)
 
 **전체 코드**
 
@@ -468,11 +534,14 @@ def main():
 
 if __name__ == "__main__":
     main()
+"""
+{'name': 'Seoul', 'country': 'South Korea', 'population': 9776000}
+"""
 ```
 
-### 2-2a. 에이전트에서 구조화된 출력
+### 2-2b. 에이전트에서 구조화된 출력
 
-[02-deps-and-output/02a-agent-output.py](../../langchain/02-deps-and-output/02a-agent-output.py)
+[02-deps-and-output/02b-agent-output.py](../../langchain/02-deps-and-output/02b-agent-output.py)
 
 뒤에서 살펴볼 `create_agent`에서는 `response_format`으로 구조화된 출력을 지정한다.
 
@@ -486,11 +555,6 @@ agent = create_agent(
 result = agent.invoke({"messages": [...]})
 print(result["structured_response"])  # CityInfo 객체
 ```
-
-**PydanticAI와 비교**
-
-PydanticAI는 `output_type` 하나로 체인/에이전트 구분 없이 동일하게 동작하지만,
-LangChain은 체인(`with_structured_output`)과 에이전트(`response_format`)로 방법이 나뉜다.
 
 **전체 코드**
 
@@ -524,10 +588,24 @@ def main():
     result = agent.invoke(
         {"messages": [{"role": "user", "content": "서울에 대해 알려줘"}]}
     )
+    # Pydantic 인스턴스의 기본 repr (name='...' country='...' population=...)
     print(result["structured_response"])
+    print()
+
+    # JSON 문자열로 직렬화
+    city: CityInfo = result["structured_response"]
+    print(city.model_dump_json(indent=2))
 
 if __name__ == "__main__":
     main()
+
+name='서울' country='대한민국' population=9733509
+
+{
+  "name": "서울",
+  "country": "대한민국",
+  "population": 9733509
+}
 ```
 
 ### 2-3. Pydantic Validation 체크
