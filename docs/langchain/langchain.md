@@ -36,7 +36,7 @@
   - [5-2. LangGraph로 해결](#5-2-langgraph로-해결)
 - [6. RAG](#6-rag)
 - [7. 평가](#7-평가)
-  - [[참고] PydanticAI가 제공하지 않는 기능들](#참고-pydanticai가-제공하지-않는-기능들)
+  - [[참고] LangGraph 고급 기능 예](#참고-langgraph-고급-기능-예)
 
 ---
 
@@ -787,7 +787,7 @@ def web_fetch(url: str) -> str:
     ...
 ```
 
-type을 이용해서 llm의 native 기능을 사용하도록 요청할 수도 있다.
+type을 이용해서 llm의 native 기능을 사용하도록 요청할 수도 있다. (단, OpenAI/Anthropic 등 제공자별로 문자열이 다름)
 
 ```python
 # LangChain — OpenAI 네이티브 웹 검색 사용
@@ -893,7 +893,7 @@ def review_movie(movie_title: str) -> str:
 
 **상위 에이전트에 도구 등록**
 
-상위 에이전트가 이 도구를 자동으로 호출하면 하위 에이전트에 위임된다.
+등록된 도구(`review_movie`)는 내부에서 하위 에이전트를 호출하므로, 상위 에이전트가 이 도구를 사용할 때마다 작업이 하위 에이전트로 위임된다.
 
 ```python
 movie_agent = create_agent("openai:gpt-4o", tools=[review_movie], ...)
@@ -950,31 +950,51 @@ if __name__ == "__main__":
 
 `main()`에서 에이전트를 순차 호출하고, 결과를 추출하여 다음 에이전트에 전달한다.
 
-**구조화된 출력으로 결과 추출**
-
-`response_format=MovieOutput`으로 구조화된 출력을 받아 `title`을 꺼낸다.
+**전체 코드**
 
 ```python
-movie_result = movie_agent.invoke({"messages": [...]})
-movie = movie_result["structured_response"]  # MovieOutput 객체
-```
+from dotenv import load_dotenv
+from pydantic import Field, BaseModel
+from langchain.agents import create_agent
 
-**분기 처리는 직접**
+load_dotenv()
 
-에이전트를 써도 None 체크 같은 분기는 개발자가 처리해야 한다.
+class MovieOutput(BaseModel):
+    title: str | None = Field(description="영화 제목", default=None, max_length=100)
 
-```python
-if movie.title is None:
-    print("영화를 찾지 못했습니다.")
-    return
-```
-
-**다음 에이전트에 수동 연결**
-
-```python
-review_result = review_agent.invoke(
-    {"messages": [{"role": "user", "content": f"제목이 {movie.title}인 영화의 리뷰를 찾아줘"}]}
+movie_agent = create_agent(
+    "openai:gpt-4o",
+    system_prompt="영화 전문가들을 위한 영화를 선택해줘. 적절한 영화가 없으면 title을 null로 반환해줘",
+    response_format=MovieOutput,
 )
+
+review_agent = create_agent(
+    "openai:gpt-4o",
+    system_prompt="영화 리뷰 전문가야. 가장 최신에 작성된 리뷰를 선택해줘.",
+)
+
+def main():
+    # 1단계: 영화 추천
+    movie_result = movie_agent.invoke(
+        {"messages": [{"role": "user", "content": "2020년에 나온 한국 영화를 추천해 줘"}]}
+    )
+    movie = movie_result["structured_response"]
+
+    # 2단계: None 체크 — 에이전트를 써도 분기는 직접 처리
+    if movie.title is None:
+        print("영화를 찾지 못했습니다.")
+        return
+
+    print(f"영화 제목: {movie.title}")
+
+    # 3단계: 리뷰 검색 — 에이전트 간 결과를 수동으로 연결
+    review_result = review_agent.invoke(
+        {"messages": [{"role": "user", "content": f"제목이 {movie.title}인 영화의 리뷰를 찾아줘"}]}
+    )
+    print(review_result["messages"][-1].content)
+
+if __name__ == "__main__":
+    main()
 ```
 
 **PydanticAI와 비교**
@@ -1029,16 +1049,6 @@ result = chain.invoke({"question": "2020년에 나온 한국 영화를 추천해
 - **입력 스키마 변환도 lambda로 명시** — `MovieOutput` → `{"question": ...}` 변환이 파이프 중간에 끼어듦
 - **에러 메시지/흐름 제어가 복잡** — "영화를 못 찾음" 케이스도 `RunnableLambda(lambda _: ...)` 래핑 필요
 - **디버깅 어려움** — 여러 개의 lambda가 이어져 있으면 어느 단계에서 문제가 발생했는지 추적하기 힘듦
-
-**복잡도 비교 (4-2 vs 4-3)**
-
-| | 4-2 (순차 호출) | 4-3 (파이프 연결) |
-|---|---|---|
-| main() 길이 | ~9줄 | ~20줄 |
-| 분기 표현 | `if/else` (명시적) | `RunnableBranch` + lambda 중첩 |
-| 중간 타입 추적 | 변수 바인딩으로 명확 | 파이프 내부 타입 추론 필요 |
-| 디버깅 | `print` 삽입이 쉬움 | `RunnableLambda`로 감싸야 중간값 확인 가능 |
-| 에러 위치 | 스택트레이스에 라인 그대로 | lambda/RunnableLambda 내부로 숨음 |
 
 이 정도의 복잡도가 쌓이면 **그래프가 필요하다는 신호**다. 5장에서 `StateGraph`로 같은 흐름을 선언적으로 표현할 수 있음을 보게 된다.
 
@@ -1169,7 +1179,7 @@ class WorkflowState(TypedDict):
 노드는 일반 함수로 구현한다. `state`를 인자로 받고, **변경할 필드만 dict로 반환**하면 기존 상태에 병합된다.
 
 ```python
-def find_movie_node(state: WorkflowState) -> WorkflowState:  # -> dict와 동일
+def find_movie_node(state: WorkflowState) -> WorkflowState:  # -> dict로 변경 가능
     # state에서 값 읽기
     result = movie_agent.invoke(
         {"messages": [{"role": "user", "content": f"{state['year']}년에 개봉한 영화를 추천해 줘"}]}
@@ -1489,7 +1499,7 @@ LCEL → Agent Executor → LangGraph로 진화하면서 **과거 API를 depreca
 
 
 ---
-### [참고] PydanticAI가 제공하지 않는 기능들의 예
+### [참고] LangGraph 고급 기능 예
 
 [07-advanced/01-graph-resume.py](../../langchain/07-advanced/01-graph-resume.py) — 중단·재개  
 [07-advanced/02-time-travel.py](../../langchain/07-advanced/02-time-travel.py) — 시간여행
